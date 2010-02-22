@@ -1,0 +1,375 @@
+--- origsrc/cacao-0.99.4/configure.ac	2009-03-16 06:42:56.000000000 -0500
++++ src/cacao-0.99.4/configure.ac	2009-11-29 03:12:46.454260400 -0600
+@@ -133,8 +133,8 @@ dnl host type
+ case "$host_os" in
+ *cygwin* )
+     OS_DIR="cygwin"
+-    INTRP_CFLAGS="$ARCH_CFLAGS -D__WINDOWS__ -D__CYGWIN__ -Wall -Wno-long-long"
+-    ARCH_CFLAGS="$ARCH_CFLAGS -D__WINDOWS__ -D__CYGWIN__ -std=c99 -pedantic -Wall -Wno-long-long"
++    INTRP_CFLAGS="$ARCH_CFLAGS -Wall -Wno-long-long"
++    ARCH_CFLAGS="$ARCH_CFLAGS -std=c99 -pedantic -Wall -Wno-long-long"
+     ;;
+ 
+ *darwin* )
+--- origsrc/cacao-0.99.4/src/native/native.h	2008-08-04 11:51:28.000000000 -0500
++++ src/cacao-0.99.4/src/native/native.h	2009-11-19 11:54:49.958838400 -0600
+@@ -46,10 +46,16 @@
+ #define NATIVE_METHODS_COUNT    sizeof(methods) / sizeof(JNINativeMethod)
+ 
+ 
+-#define NATIVE_LIBRARY_PREFIX     "lib"
++#if defined(__CYGWIN__)
++# define NATIVE_LIBRARY_PREFIX     "cyg"
++#else
++# define NATIVE_LIBRARY_PREFIX     "lib"
++#endif
+ 
+ #if defined(__DARWIN__)
+ # define NATIVE_LIBRARY_SUFFIX    ".dylib"
++#elif defined(__CYGWIN__)
++# define NATIVE_LIBRARY_SUFFIX    ".dll"
+ #else
+ # define NATIVE_LIBRARY_SUFFIX    ".so"
+ #endif
+--- origsrc/cacao-0.99.4/src/vm/jit/i386/asmpart.S	2008-08-04 11:51:12.000000000 -0500
++++ src/cacao-0.99.4/src/vm/jit/i386/asmpart.S	2009-11-29 11:33:02.643071000 -0600
+@@ -34,38 +34,45 @@
+ #include "vm/jit/methodheader.h"
+ 
+ 
++#if defined(__CYGWIN__)
++#define NAME(x) _##x
++#else
++#define NAME(x) ##x
++#endif
++
++
+ 	.text
+ 
+ 
+ /* export functions ***********************************************************/
+ 
+-	.globl asm_md_init
++	.globl NAME(asm_md_init)
+ 
+-	.globl asm_vm_call_method
+-	.globl asm_vm_call_method_int
+-	.globl asm_vm_call_method_long
+-	.globl asm_vm_call_method_float
+-	.globl asm_vm_call_method_double
+-	.globl asm_vm_call_method_exception_handler
+-	.globl asm_vm_call_method_end
+-
+-	.globl asm_handle_nat_exception
+-	.globl asm_handle_exception
+-
+-	.globl asm_abstractmethoderror
+-
+-	.globl asm_builtin_f2i
+-	.globl asm_builtin_f2l
+-	.globl asm_builtin_d2i
+-	.globl asm_builtin_d2l
++	.globl NAME(asm_vm_call_method)
++	.globl NAME(asm_vm_call_method_int)
++	.globl NAME(asm_vm_call_method_long)
++	.globl NAME(asm_vm_call_method_float)
++	.globl NAME(asm_vm_call_method_double)
++	.globl NAME(asm_vm_call_method_exception_handler)
++	.globl NAME(asm_vm_call_method_end)
++
++	.globl NAME(asm_handle_nat_exception)
++	.globl NAME(asm_handle_exception)
++
++	.globl NAME(asm_abstractmethoderror)
++
++	.globl NAME(asm_builtin_f2i)
++	.globl NAME(asm_builtin_f2l)
++	.globl NAME(asm_builtin_d2i)
++	.globl NAME(asm_builtin_d2l)
+ 
+-	.globl asm_compare_and_swap
+-	.globl asm_memory_barrier
++	.globl NAME(asm_compare_and_swap)
++	.globl NAME(asm_memory_barrier)
+ 
+-	.globl asm_get_cycle_count
++	.globl NAME(asm_get_cycle_count)
+ 
+ #if defined(ENABLE_ESCAPE_CHECK)
+-	.globl asm_escape_check
++	.globl NAME(asm_escape_check)
+ #endif
+ 
+ 
+@@ -84,7 +91,7 @@
+ 
+ *******************************************************************************/
+ 
+-asm_md_init:
++NAME(asm_md_init):
+ 	sub     $4,sp                       /* allocate space for the FPU state   */
+ 	fnstcw  (sp)                        /* get the FPU state                  */
+ 	mov     (sp),%eax
+@@ -118,11 +125,11 @@ asm_md_init:
+ 	.long   0                           /* frame size                         */
+ 	.long   0                           /* codeinfo pointer                   */
+ 
+-asm_vm_call_method:
+-asm_vm_call_method_int:
+-asm_vm_call_method_long:
+-asm_vm_call_method_float:
+-asm_vm_call_method_double:
++NAME(asm_vm_call_method):
++NAME(asm_vm_call_method_int):
++NAME(asm_vm_call_method_long):
++NAME(asm_vm_call_method_float):
++NAME(asm_vm_call_method_double):
+ 	push    bp
+ 	mov     sp,bp                       /* save stack pointer                 */
+ 	sub     $(4*4),sp                   /* create stackframe                  */
+@@ -138,7 +145,7 @@ asm_vm_call_method_double:
+ 	mov     4*4(bp),itmp1               /* number of stack arguments          */
+ 
+ 	cmp     $0,itmp1
+-	je      L_asm_vm_call_method_stack_copy_done
++	je      NAME(L_asm_vm_call_method_stack_copy_done)
+ 
+ 	mov     itmp1,itmp2
+ 	add     $1,itmp2                    /* keep stack 16-byte aligned         */
+@@ -147,7 +154,7 @@ asm_vm_call_method_double:
+ 	sub     itmp2,sp                    /* create stack frame                 */
+ 	mov     sp,itmp2                    /* temporary stack pointer            */
+ 
+-L_asm_vm_call_method_stack_copy_loop:
++NAME(L_asm_vm_call_method_stack_copy_loop):
+ 	mov     0(t0),itmp3                 /* load argument                      */
+ 	mov     itmp3,0(itmp2)              /* store argument on stack            */
+ 	mov     4(t0),itmp3
+@@ -158,9 +165,9 @@ L_asm_vm_call_method_stack_copy_loop:
+ 	add     $8,itmp2                    /* increase SP                        */
+ 
+ 	cmp     $0,itmp1
+-	jg      L_asm_vm_call_method_stack_copy_loop
++	jg      NAME(L_asm_vm_call_method_stack_copy_loop)
+ 
+-L_asm_vm_call_method_stack_copy_done:
++NAME(L_asm_vm_call_method_stack_copy_done):
+ 	lea     (2*4-256)(bp),mptr          /* We subtract 256 to force the next  */
+ 	                                    /* move instruction to have a 32-bit  */
+ 	                                    /* offset.                            */
+@@ -168,7 +175,7 @@ L_asm_vm_call_method_stack_copy_done:
+ 	mov     (0*4+256)(mptr),itmp3       /* method call as in Java             */
+ 	call    *itmp3                      /* call JIT compiler                  */
+ 
+-L_asm_vm_call_method_return:
++NAME(L_asm_vm_call_method_return):
+ 	mov     s1,sp                       /* restore stackpointer               */
+ 
+ 	mov     0*4(sp),t0                  /* restore registers                  */
+@@ -178,12 +185,12 @@ L_asm_vm_call_method_return:
+ 	leave
+ 	ret
+ 
+-asm_vm_call_method_exception_handler:
++NAME(asm_vm_call_method_exception_handler):
+ 	push    xptr                        /* pass exception pointer             */
+ 	call    builtin_throw_exception
+ 	add     $4,sp
+-asm_vm_call_method_end:
+-	jmp     L_asm_vm_call_method_return
++NAME(asm_vm_call_method_end):
++	jmp     NAME(L_asm_vm_call_method_return)
+ 
+ 
+ /* asm_handle_exception ********************************************************
+@@ -196,11 +203,11 @@ asm_vm_call_method_end:
+ *                                                                              *
+ *******************************************************************************/
+ 
+-asm_handle_nat_exception:
++NAME(asm_handle_nat_exception):
+ 	add     $4,sp                       /* clear return address of native stub*/
+ 		
+-asm_handle_exception:
+-L_asm_handle_exception:                 /* required for PIC code              */
++NAME(asm_handle_exception):
++NAME(L_asm_handle_exception):                 /* required for PIC code              */
+ 	sub     $((ARG_CNT+TMP_CNT+3)*4),sp /* keep stack 16-byte aligned         */
+ 
+ 	SAVE_ARGUMENT_REGISTERS(0)          /* we save arg and temp registers in  */
+@@ -209,7 +216,7 @@ L_asm_handle_exception:                 
+ 	mov     $((ARG_CNT+TMP_CNT+3)*4),itmp3 /* prepare a3 for handle_exception */
+ 	mov     $1,t0                       /* set maybe-leaf flag                */
+ 
+-L_asm_handle_exception_stack_loop:
++NAME(L_asm_handle_exception_stack_loop):
+ 	sub     $(12*4),sp                  /* keep stack 16-byte aligned         */
+ 	mov     xptr,4*4(sp)                /* save exception pointer             */
+ 	mov     xpc,5*4(sp)                 /* save exception pc                  */
+@@ -232,7 +239,7 @@ L_asm_handle_exception_stack_loop:
+ 	call    exceptions_handle_exception
+ 
+ 	test    v0,v0
+-	jz      L_asm_handle_exception_not_catched
++	jz      NAME(L_asm_handle_exception_not_catched)
+ 
+ 	mov     v0,xpc                      /* move handlerpc into xpc            */
+ 	mov     4*4(sp),xptr                /* restore exception pointer          */
+@@ -240,29 +247,29 @@ L_asm_handle_exception_stack_loop:
+ 	add     $(12*4),sp                  /* free stackframe                    */
+ 
+ 	test    t0,t0                       /* test for maybe-leaf flag           */
+-	jz      L_asm_handle_exception_no_leaf
++	jz      NAME(L_asm_handle_exception_no_leaf)
+ 
+ 	RESTORE_ARGUMENT_REGISTERS(0)       /* if this is a leaf method, we have  */
+ 	RESTORE_TEMPORARY_REGISTERS(ARG_CNT)/* to restore arg and temp registers  */
+ 
+ 	add     $((ARG_CNT+TMP_CNT+3)*4),sp /* remove maybe-leaf stackframe       */
+ 
+-L_asm_handle_exception_no_leaf:
++NAME(L_asm_handle_exception_no_leaf):
+ 	jmp     *xpc                        /* jump to exception handler          */
+ 
+-L_asm_handle_exception_not_catched:
++NAME(L_asm_handle_exception_not_catched):
+ 	mov     4*4(sp),xptr                /* restore exception pointer          */
+ 	mov     6*4(sp),itmp3               /* restore data segment pointer       */
+ 	mov     8*4(sp),t0                  /* get maybe-leaf flag                */
+ 	add     $(12*4),sp                  /* free stackframe                    */
+ 
+ 	test    t0,t0
+-	jz      L_asm_handle_exception_no_leaf_stack
++	jz      NAME(L_asm_handle_exception_no_leaf_stack)
+ 
+ 	add     $((ARG_CNT+TMP_CNT+3)*4),sp /* remove maybe-leaf stackframe       */
+ 	xor     t0,t0                       /* clear the maybe-leaf flag          */
+ 
+-L_asm_handle_exception_no_leaf_stack:
++NAME(L_asm_handle_exception_no_leaf_stack):
+ 	mov     FrameSize(itmp3),itmp2      /* get frame size                     */
+ 	add     sp,itmp2                    /* pointer to save area               */
+ 
+@@ -322,7 +329,7 @@ noflt:
+ 
+ 	xor     itmp3,itmp3                 /* prepare a3 for handle_exception    */
+ 
+-	jmp     L_asm_handle_exception_stack_loop
++	jmp     NAME(L_asm_handle_exception_stack_loop)
+ 		
+ 
+ /* asm_abstractmethoderror *****************************************************
+@@ -331,7 +338,7 @@ noflt:
+ 
+ *******************************************************************************/
+ 
+-asm_abstractmethoderror:
++NAME(asm_abstractmethoderror):
+ 	sub     $(3*4),sp                   /* keep stack 16-byte aligned         */
+ 	mov     sp,itmp1                    /* pass java sp                       */
+ 	add     $((1+3)*4),itmp1
+@@ -345,7 +352,7 @@ asm_abstractmethoderror:
+ 
+ 	pop     xpc                         /* get exception address              */
+ 	sub     $2,xpc                      /* exception address is ra - 2        */
+-	jmp     L_asm_handle_exception
++	jmp     NAME(L_asm_handle_exception)
+ 
+ 
+ /************************ function asm_builtin_x2x *****************************
+@@ -354,28 +361,28 @@ asm_abstractmethoderror:
+ *                                                                              *
+ *******************************************************************************/
+ 
+-asm_builtin_f2i:
++NAME(asm_builtin_f2i):
+ 	sub     $(3*4),%esp
+ 	fsts    (%esp)
+ 	call    builtin_f2i
+ 	add     $(3*4),%esp
+ 	ret
+ 
+-asm_builtin_d2i:
++NAME(asm_builtin_d2i):
+ 	sub     $(3*4),%esp
+ 	fstl    (%esp)
+ 	call    builtin_d2i
+ 	add     $(3*4),%esp
+ 	ret
+ 
+-asm_builtin_f2l:
++NAME(asm_builtin_f2l):
+ 	sub     $(3*4),%esp
+ 	fsts    (%esp)
+ 	call    builtin_f2l
+ 	add     $(3*4),%esp
+ 	ret
+ 
+-asm_builtin_d2l:
++NAME(asm_builtin_d2l):
+ 	sub     $(3*4),%esp
+ 	fstl    (%esp)
+ 	call    builtin_d2l
+@@ -398,7 +405,7 @@ asm_builtin_d2l:
+ 
+ *******************************************************************************/
+ 
+-asm_compare_and_swap:
++NAME(asm_compare_and_swap):
+ 	mov     1*4(sp),%ecx            /* load p into a register                 */
+ 	mov     2*4(sp),%eax            /* load oldval into return register       */
+ 	mov     3*4(sp),%edx            /* load newval into a register            */
+@@ -412,7 +419,7 @@ asm_compare_and_swap:
+ 
+ *******************************************************************************/
+ 
+-asm_memory_barrier:
++NAME(asm_memory_barrier):
+ 	lock; add $0,0(sp)
+ 	ret
+ 
+@@ -423,12 +430,12 @@ asm_memory_barrier:
+ 
+ *******************************************************************************/
+ 
+-asm_get_cycle_count:
++NAME(asm_get_cycle_count):
+ 	rdtsc
+ 	ret
+ 
+ #if defined(ENABLE_ESCAPE_CHECK)
+-asm_escape_check:
++NAME(asm_escape_check):
+ 	sub     $24,%esp
+ 
+ 	mov     t0, 4(%esp)
+--- origsrc/cacao-0.99.4/src/vm/jit/i386/cygwin/ucontext.h	2008-08-04 11:51:12.000000000 -0500
++++ src/cacao-0.99.4/src/vm/jit/i386/cygwin/ucontext.h	2009-11-29 04:11:12.172424100 -0600
+@@ -16,6 +16,7 @@
+ #ifndef UCONTEXT_H
+ #define UCONTEXT_H
+ 
++#define WIN32_LEAN_AND_MEAN
+ #include <windows.h>
+ 
+ typedef struct __stack {
+--- origsrc/cacao-0.99.4/src/vmcore/linker.c	2009-03-13 05:12:48.000000000 -0500
++++ src/cacao-0.99.4/src/vmcore/linker.c	2009-11-29 05:19:02.429321200 -0600
+@@ -137,7 +137,7 @@ void linker_preinit(void)
+ 	/* Check for if alignment for long and double matches what we
+ 	   assume for the current architecture. */
+ 
+-#if defined(__I386__) || (defined(__ARM__) && !defined(__ARM_EABI__)) || (defined(__POWERPC__) && defined(__DARWIN__)) || defined(__M68K__)
++#if (defined(__I386__) && !defined(__CYGWIN__)) || (defined(__ARM__) && !defined(__ARM_EABI__)) || (defined(__POWERPC__) && defined(__DARWIN__)) || defined(__M68K__)
+ 	/* Define a define here which is later checked when we use this
+ 	   offset. */
+ 
+@@ -981,7 +981,7 @@ static classinfo *link_class_intern(clas
+ 		if (!(f->flags & ACC_STATIC)) {
+ 			dsize = descriptor_typesize(f->parseddesc);
+ 
+-#if defined(__I386__) || (defined(__ARM__) && !defined(__ARM_EABI__)) || (defined(__POWERPC__) && defined(__DARWIN__)) || defined(__M68K__)
++#if (defined(__I386__) && !defined(__CYGWIN__)) || (defined(__ARM__) && !defined(__ARM_EABI__)) || (defined(__POWERPC__) && defined(__DARWIN__)) || defined(__M68K__)
+ 			/* On some architectures and configurations we need to
+ 			   align long (int64_t) and double fields to 4-bytes to
+ 			   match what GCC does for struct members.  We must do the

@@ -1,0 +1,14 @@
+inherit java
+
+HOMEPAGE="http://www.cacaovm.org/"
+SRC_URI="http://www.complang.tuwien.ac.at/cacaojvm/download/${P}/${P}.tar.bz2"
+
+
+#	--enable-intrp --with-ffi
+CYGCONF_ARGS="
+	--disable-libjvm
+	--enable-gc=boehm
+	--with-java-runtime-library=gnuclasspath
+	--with-java-runtime-library-prefix=${JAVA_HOME}
+	JAVAC=${JAVAC} JAR=${JAR}
+"
